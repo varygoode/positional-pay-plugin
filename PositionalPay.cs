@@ -97,7 +97,7 @@ namespace Oxide.Plugins
                 ["PosInfo5"] = "Use '/position quit PosID#' to quit your position with ID number PosID#. You forfeit any unclaimed pay.",
                 ["PosInfo6"] = "Use '/position hire PosID# Name' to hire Name for the position with ID number PosID#.\n"
                              + "Use '/position fire PosID# Name' to fire Name from the position with ID number PosID#.",
-                ["PosInfo7"] = "Use '/position edit PosID# FieldName' to edit the field FieldName of the position with ID PosID#.\n"
+                ["PosInfo7"] = "Use '/position edit PosID# FieldName NewValue' to edit the field FieldName of the position with ID PosID# to NewValue.\n"
                              + "Field Names: JOBTITLE, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE",
 
                 ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>",
@@ -109,7 +109,7 @@ namespace Oxide.Plugins
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
                              + "described by Description, paid Payrate# hourly, and abilities from AbilityGroup.",
                 ["JobInfo3"] = "Use '/job delete JobID#' to permanently remove the job with ID number JobID#.",
-                ["JobInfo4"] = "Use '/job edit JobID# FieldName' to edit the field FieldName of the job with ID number PosID#.\n"
+                ["JobInfo4"] = "Use '/job edit JobID# FieldName NewValue' to edit the field FieldName of the job with ID number PosID# to NewValue.\n"
                              + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP",
                 ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
                 ["JobDeleteNotFound"] = "Cannot find a job with id #{0} to delete",
@@ -298,6 +298,31 @@ namespace Oxide.Plugins
 
         #region Methods
 
+        private bool EditJob(Job job, JobEditField field, string value)
+        {
+            switch(field)
+            {
+                case JobEditField.NAME:
+                    job.Name = value.ToUpper();
+                    return true;
+
+                case JobEditField.DESCRIPTION:
+                    job.Description = value;
+                    return true;
+
+                case JobEditField.PAYRATE:
+                    double newRate;
+                    if(!Double.TryParse(value, out newRate)) return false;
+                    job.PayRate = newRate;
+                    return true;
+
+                case JobEditField.GROUP:
+                    job.AbilityGroup = value;
+                    return true;
+            }
+            return false;
+        }
+
         #endregion Methods
 
         #region API
@@ -306,7 +331,7 @@ namespace Oxide.Plugins
 
         #region Helpers
 
-       private IPlayer GetActivePlayerByUserID(string userID)
+        private IPlayer GetActivePlayerByUserID(string userID)
         {
             foreach (var player in players.Connected)
                 if (player.Id == userID) return player;
@@ -518,6 +543,14 @@ namespace Oxide.Plugins
         	}
 
         	public Dictionary<string, object> ToDictionary() => JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(this));
+        }
+
+        private enum JobEditField
+        {
+            NAME,
+            DESCRIPTION,
+            PAYRATE,
+            GROUP
         }
 
         private void SaveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, storedData);
