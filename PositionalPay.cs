@@ -112,6 +112,7 @@ namespace Oxide.Plugins
                 ["JobInfo4"] = "Use '/job edit JobID# FieldName' to edit the field FieldName of the job with ID number PosID#.\n"
                              + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP",
                 ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
+                ["JobDeleteNotFound"] = "Cannot find a job with id #{0} to delete",
                 ["JobDeleteSuccess"] = "You have successfully deleted the {0} job with id #{1}"
             }, this);
         }
@@ -268,6 +269,22 @@ namespace Oxide.Plugins
         		    return;
 
         		case "delete":
+                    if(args.Length < 2)
+                    {
+                        iPlayer.Reply(Lang("JobInfo3", iPlayer.Id, command));
+                        return;
+                    }
+
+                    Job deleteJob = FindJobWithID(args[1]);
+
+                    if(deleteJob == null)
+                    {
+                        iPlayer.Reply(Lang("JobDeleteNotFound", iPlayer.Id, args[1]));
+                        return;
+                    }
+
+                    iPlayer.Reply(Lang("JobDeleteSuccess", iPlayer.Id, deleteJob.Title, deleteJob.ID));
+                    storedData.Remove(deleteJob.ID);
 
         		    return;
 
