@@ -107,10 +107,12 @@ namespace Oxide.Plugins
                 ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
-                             + "described by Description, paid Payrate# daily (OOC hourly), and abilities from AbilityGroup.",
-                ["JobInfo3"] = "Use '/job remove JobID#' to permanently remove the job with ID number JobID#.",
+                             + "described by Description, paid Payrate# hourly, and abilities from AbilityGroup.",
+                ["JobInfo3"] = "Use '/job delete JobID#' to permanently remove the job with ID number JobID#.",
                 ["JobInfo4"] = "Use '/job edit JobID# FieldName' to edit the field FieldName of the job with ID number PosID#.\n"
-                             + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP"
+                             + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP",
+                ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
+                ["JobDeleteSuccess"] = "You have successfully deleted the {0} job with id #{1}"
             }, this);
         }
 
@@ -251,10 +253,21 @@ namespace Oxide.Plugins
         		    return;
 
         		case "create":
+                    if(args.Length < 5)
+                    {
+                        iPlayer.Reply(Lang("JobInfo2", iPlayer.Id, command));
+                        return;
+                    }
+
+                    Job newJob = Job(args[1], args[2], args[3], args[4]);
+
+                    storedData.Jobs.Add(newJob.ID, new List<Job>() { newJob });
+
+                    iPlayer.Reply(Lang("JobCreateSuccess", iPlayer.Id, newJob.Title, newJob.ID));
 
         		    return;
 
-        		case "remove":
+        		case "delete":
 
         		    return;
 
@@ -303,7 +316,7 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private Account FindJobWithID(string id)
+        private Job FindJobWithID(string id)
         {
             var query = from outer in storedData.Jobs
                         from inner in outer.Value
@@ -314,7 +327,7 @@ namespace Oxide.Plugins
             return query.First();
         }
 
-        private Account FindPositionWithID(string id)
+        private Position FindPositionWithID(string id)
         {
             var query = from outer in storedData.Positions
                         from inner in outer.Value
@@ -325,23 +338,23 @@ namespace Oxide.Plugins
             return query.First();
         }
 
-        private List<Account> FindPositionsWithOwnerID(string ownerID)
+        private List<Position> FindPositionsWithOwnerID(string ownerID)
         {
-            var query = from outer in storedData.Accounts
+            var query = from outer in storedData.Positions
                         from inner in outer.Value
                         where inner.OwnerID.ToString() == ownerID
                         select inner;
 
-            List<Account> accounts = new List<Account>();
+            List<Position> positions = new List<Position>();
 
-            if (!query.Any()) return accounts;
+            if (!query.Any()) return positions;
 
             foreach(var q in query)
             {
-                accounts.Add(q);
+                positions.Add(q);
             }
             
-            return accounts;
+            return positions;
         }
 
         private float GenericDistance(GenericPosition a, GenericPosition b)
