@@ -222,6 +222,31 @@ namespace Oxide.Plugins
         		    return;
 
         		case "list":
+                    List<Job> allJobs = new List<Job>();
+
+                    for(int i = 0; i < Job.CurrentID; job++)
+                    {
+                        Job currentJob = FindJobWithID(i);
+                        if(currentJob != null)
+                        {
+                            allJobs.Add(currentJob);
+                        }
+                        
+                    }
+
+                    if(allJobs.IsEmpty())
+                    {
+                        iPlayer.Reply(Lang("NoJobs", iPlayer.Id, command));
+                        return;
+                    }
+
+                    string jobsOutput = "";
+                    foreach (var job in allJobs)
+                    {
+                        jobsOutput += job.Title + " (ID # " + job.ID + ")\n";
+                    }
+
+                    iPlayer.Reply(jobsOutput);
 
         		    return;
 
