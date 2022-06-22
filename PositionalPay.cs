@@ -112,8 +112,10 @@ namespace Oxide.Plugins
                 ["JobInfo4"] = "Use '/job edit JobID# FieldName NewValue' to edit the field FieldName of the job with ID number PosID# to NewValue.\n"
                              + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP",
                 ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
-                ["JobDeleteNotFound"] = "Cannot find a job with id #{0} to delete",
-                ["JobDeleteSuccess"] = "You have successfully deleted the {0} job with id #{1}"
+                ["JobNotFound"] = "Cannot find a job with id #{0}",
+                ["JobDeleteSuccess"] = "You have successfully deleted the {0} job with id #{1}",
+                ["JobEditFailure"] = "Job #{0} edit failure",
+                ["JobEditSuccess"] = "You have successfully updated {0} to {1} for Job #{2}"
             }, this);
         }
 
@@ -279,7 +281,7 @@ namespace Oxide.Plugins
 
                     if(deleteJob == null)
                     {
-                        iPlayer.Reply(Lang("JobDeleteNotFound", iPlayer.Id, args[1]));
+                        iPlayer.Reply(Lang("JobNotFound", iPlayer.Id, args[1]));
                         return;
                     }
 
@@ -289,6 +291,36 @@ namespace Oxide.Plugins
         		    return;
 
         		case "edit":
+                    if(args.Length < 4)
+                    {
+                        iPlayer.Reply(Lang("JobInfo4", iPlayer.Id, command));
+                        return;
+                    }
+
+                    Job editJob = FindJobWithID(args[1]);
+
+                    if (editJob == null)
+                    {
+                        iPlayer.Reply(Lang("JobNotFound", iPlayer.Id, args[1]));
+                        return;
+                    }
+
+                    JobEditField jobField;
+                    if(!AccountEditField.TryParse(args[2].ToUpper(), out jobField)
+                    {
+                        iPlayer.Reply(Lang("JobInfo4", iPlayer.Id, command));
+                        return;
+                    }
+
+                    if(!EditJob(editJob, jobField, args[3]))
+                    {
+                        iPlayer.Reply(Lang("JobEditFailure", iPlayer.Id, command, editJob.ID));
+                        return;
+                    }
+
+                    string newValue = (jobField == JobEditField.NAME) ? args[3].ToUpper() : args[3];
+
+                    iPlayer.Reply(Lang("JobEditSuccess", iPlayer.Id, jobField.ToString(), newValue, editJob.ID));
 
         		    return;
         	}
