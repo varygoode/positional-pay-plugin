@@ -106,6 +106,9 @@ namespace Oxide.Plugins
                 ["ClockedIN"] = "<color=#66FF00>CLOCKED-IN</color>",
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
 
+                ["ClockInSuccess"] = "You successfully <color=#66FF00>CLOCKED-IN</color> to position #{0}",
+                ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /paycheck to get paid.",
+
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
                 ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
 
@@ -193,10 +196,44 @@ namespace Oxide.Plugins
         		    return;
 
         		case "clockin":
+        		    if (args.Length < 2)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo3", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Position clockinPos = FindPositionWithID(args[1]);
+
+        		    if (clockinPos == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    clockinPos.ClockIn();
+
+        		    iPlayer.Reply(Lang("ClockInSuccess", iPlayer.Id, clockinPos.ID));
 
         		    return;
 
         		case "clockout":
+        		    if (args.Length < 2)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo3", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Position clockoutPos = FindPositionWithID(args[1]);
+
+        		    if (clockoutPos == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    clockinPos.ClockIn();
+
+        		    iPlayer.Reply(Lang("ClockOutSuccess", iPlayer.Id, clockoutPos.ID));
 
         		    return;
 
@@ -725,6 +762,19 @@ namespace Oxide.Plugins
         	{
         		Filled = false;
         		OwnerID = id;
+        	}
+
+        	private ClockIn()
+        	{
+        		ClockedIn = true;
+        		//ClockInTime = 
+        	}
+
+        	private ClockOut()
+        	{
+        		ClockedIn = false;
+        		//ClockOutTime = 
+        		//Set paycheck to Title.payrate * delta clockin-clockout
         	}
         }
 
