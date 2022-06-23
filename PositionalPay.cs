@@ -118,6 +118,9 @@ namespace Oxide.Plugins
                 ["PosFireCurrentlyUnfilled"] = "This position is currently unfilled.",
                 ["PosFireSuccess"] = "{0} has been successfully fire from the position with id #{1}",
 
+                ["PosQuitFail"] = "You don't work that position.",
+                ["PosQuitSuccess"] = "You have successfully quit position #{0} and forfeited any unclaimed paychecks.",
+
                 ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
@@ -242,6 +245,37 @@ namespace Oxide.Plugins
         		    return;
 
         		case "quit":
+        		    if (args.Length < 2)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo5", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Position quitPos = FindPositionWithID(args[1]);
+
+        		    if (quitPos == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    IPlayer newQuit = FindPlayer(iPlayer.displayName);
+
+        		    if (newQuit == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id));
+                        return;
+        		    }
+
+        		    if (!quitPos.Filled)
+        		    {
+        		    	iPlayer.Reply(Lang("PosQuitFail", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    quitPos.Quit();
+
+        		    iPlayer.Reply(Lang("PosQuitSuccess", iPlayer.Id, quitPos.ID));
 
         		    return;
 
@@ -314,7 +348,7 @@ namespace Oxide.Plugins
 
         		    if (newHire == null)
         		    {
-        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id, args[2]));
+        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id));
                         return;
         		    }
 
@@ -349,7 +383,7 @@ namespace Oxide.Plugins
 
         		    if (newFire == null)
         		    {
-        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id, args[2]));
+        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id));
                         return;
         		    }
 
@@ -730,6 +764,7 @@ namespace Oxide.Plugins
         	public float Paycheck { get; set; }
         	public bool ClockedIn { get; set; }
         	public string OwnerID { get; set; }
+        	public string CreatorID { get; set; }
 
         	[JsonConstructor]
         	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, float clockInTime, float clockOutTime, float paycheck, string ownerID)
@@ -744,6 +779,7 @@ namespace Oxide.Plugins
         		Paycheck = paycheck;
         		ClockedIn = false;
         		OwnerID = ownerID;
+        		CreatorID = ownerID;
         	}
 
         	public Position(Job title, string ownerID) : this(false, ++CurrentID, title, null, new List<Job>(), 0f, 0f, 0f, ownerID)
@@ -762,6 +798,14 @@ namespace Oxide.Plugins
         	{
         		Filled = false;
         		OwnerID = id;
+        		Paycheck = 0f;
+        	}
+
+        	private Quit()
+        	{
+        		Filled = false;
+        		OwnerID = CreatorID;
+        		Paycheck = 0f;
         	}
 
         	private ClockIn()
