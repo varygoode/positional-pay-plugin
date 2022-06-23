@@ -90,7 +90,7 @@ namespace Oxide.Plugins
                 ["PosInfo0"] = "A position consists of a filled flag, position ID, job title, which job title they report to, which "
                              + "job titles report to them, current clock-in/clock-out times, and current accumulated paycheck.",
                 ["PosInfo1"] = "Use '/position list' to view your positions.",
-                ["PosInfo2"] = "Use '/position create Title' to create a new position.\nUse '/position remove PosID#' to remove position with ID number PosID#.",
+                ["PosInfo2"] = "Use '/position create Title' to create a new position.\nUse '/position delete PosID#' to delete position with ID number PosID#.",
                 ["PosInfo3"] = "Use '/position clockin PosID#' to Clock-In for your position with ID number PosID#.\n"
                              + "Use '/position clockout PosID#' to Clock-Out from your position with ID number PosID#.",
                 ["PosInfo4"] = "Use '/position getpaycheck' to receive pay in coin that has accumulated in your paycheck for all of your positions.",
@@ -99,12 +99,14 @@ namespace Oxide.Plugins
                              + "Use '/position fire PosID# Name' to fire Name from the position with ID number PosID#.",
                 ["PosInfo7"] = "Use '/position edit PosID# FieldName NewValue' to edit the field FieldName of the position with ID PosID# to NewValue.\n"
                              + "Field Names: JOBTITLE, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE",
+                ["PosNotFound"] = "Cannot find a position with id #{0}",
 
                 ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>",
                 ["ClockedIN"] = "<color=#66FF00>CLOCKED-IN</color>",
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
 
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
+                ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
 
                 ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
@@ -192,7 +194,7 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    Position newPos = new Position(title);
+        		    Position newPos = new Position(title, iPlayer.Id);
 
         		    if (storedData.Positions.ContainsKey(iPlayer.Id))
                     {
@@ -207,7 +209,23 @@ namespace Oxide.Plugins
 
         		    return;
 
-        		case "remove":
+        		case "delete":
+        		    if (args.Length < 2)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo2", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Position delPos = FindPositionWithID(args[1]);
+
+        		    if (delPos == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    iPlayer.Reply(Lang("PosDeleteSuccess", iPlayer.Id, args[1]));
+                    storedData.Positions[delPos.OwnerID].Remove(delPos);
 
         		    return;
 
@@ -422,7 +440,7 @@ namespace Oxide.Plugins
         {
             var query = from outer in storedData.Jobs
                         from inner in outer.Value
-                        where inner.JobID.ToString() == id
+                        where inner.ID.ToString() == id
                         select inner;
 
             if (!query.Any()) return null;
@@ -433,7 +451,7 @@ namespace Oxide.Plugins
         {
             var query = from outer in storedData.Positions
                         from inner in outer.Value
-                        where inner.PositionID.ToString() == id
+                        where inner.ID.ToString() == id
                         select inner;
 
             if (!query.Any()) return null;
@@ -583,9 +601,10 @@ namespace Oxide.Plugins
         	public float ClockOutTime { get; set; }
         	public float Paycheck { get; set; }
         	public bool ClockedIn { get; set; }
+        	public string OwnerID { get; set; }
 
         	[JsonConstructor]
-        	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, float clockInTime, float clockOutTime, float paycheck)
+        	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, float clockInTime, float clockOutTime, float paycheck, string ownerID)
         	{
         		Filled = filled;
                 ID = id;
@@ -596,9 +615,10 @@ namespace Oxide.Plugins
         		ClockOutTime = clockOutTime;
         		Paycheck = paycheck;
         		ClockedIn = false;
+        		OwnerID = ownerID;
         	}
 
-        	public Position(Job title) : this(false, ++CurrentID, title, null, new List<Job>(), 0f, 0f, 0f)
+        	public Position(Job title, string ownerID) : this(false, ++CurrentID, title, null, new List<Job>(), 0f, 0f, 0f, ownerID)
         	{
         	}
 
