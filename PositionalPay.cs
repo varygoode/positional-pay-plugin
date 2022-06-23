@@ -90,7 +90,7 @@ namespace Oxide.Plugins
                 ["PosInfo0"] = "A position consists of a filled flag, position ID, job title, which job title they report to, which "
                              + "job titles report to them, current clock-in/clock-out times, and current accumulated paycheck.",
                 ["PosInfo1"] = "Use '/position list' to view your positions.",
-                ["PosInfo2"] = "Use '/position create' to create a new position.\nUse '/position remove PosID#' to remove position with ID number PosID#.",
+                ["PosInfo2"] = "Use '/position create Title' to create a new position.\nUse '/position remove PosID#' to remove position with ID number PosID#.",
                 ["PosInfo3"] = "Use '/position clockin PosID#' to Clock-In for your position with ID number PosID#.\n"
                              + "Use '/position clockout PosID#' to Clock-Out from your position with ID number PosID#.",
                 ["PosInfo4"] = "Use '/position getpaycheck' to receive pay in coin that has accumulated in your paycheck for all of your positions.",
@@ -103,6 +103,8 @@ namespace Oxide.Plugins
                 ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>",
                 ["ClockedIN"] = "<color=#66FF00>CLOCKED-IN</color>",
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
+
+                ["PosCreateSuccess"] = "A new position with id #{0} was created",
 
                 ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
@@ -176,6 +178,32 @@ namespace Oxide.Plugins
         		    return;
 
         		case "create":
+        		    if (args.Length < 2)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo2", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Job title = FindJobWithID(args[1]);
+
+        		    if (title == null)
+        		    {
+        		    	iPlayer.Reply(Lang("JobNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    Position newPos = new Position(title);
+
+        		    if (storedData.Positions.ContainsKey(iPlayer.Id))
+                    {
+                        storedData.Positions[iPlayer.Id].Add(newPos);
+                    }
+                    else
+                    {
+                        storedData.Positions.Add(iPlayer.Id, new List<Position>() { newPos });
+                    }
+
+                    iPlayer.Reply(Lang("PosCreateSuccess", iPlayer.Id, newPos.ID));
 
         		    return;
 
