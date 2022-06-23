@@ -146,7 +146,7 @@ namespace Oxide.Plugins
         	{
         		var message = "Usage: /position info";
                 if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list|clockin|clockout|getpaycheck|quit";
-                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|remove|hire|fire|edit";
+                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|delete|hire|fire|edit";
 
                 iPlayer.Message(message);
                 return;
@@ -167,6 +167,28 @@ namespace Oxide.Plugins
         		    return;
 
         		case "list":
+        		    var yourPositions = FindPositionsWithOwnerID(iPlayer.Id);
+
+        		    if (yourPositions.IsEmpty())
+        		    {
+        		    	iPlayer.Reply(Lang("NoPositions", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    iPlayer.Reply(Lang("PosListHeader", iPlayer.Id, command));
+        		    iPlayer.Reply(Lang("Separator", iPlayer.Id, command));
+
+        		    string posList = "";
+
+        		    foreach (Position p in yourPositions)
+        		    {
+        		    	if (p.Filled)
+        		    	{
+        		    		posList += pos.Title.Name + ", ID #" + pos.ID + "\n";
+        		    	}
+        		    }
+
+        		    iPlayer.Reply(posList);
 
         		    return;
 
@@ -324,7 +346,7 @@ namespace Oxide.Plugins
         	{
         		var message = "Usage: /job info";
                 if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list";
-                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|remove|edit";
+                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|delete|edit";
 
                 iPlayer.Message(message);
                 return;
