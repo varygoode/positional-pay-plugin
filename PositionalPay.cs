@@ -85,6 +85,7 @@ namespace Oxide.Plugins
                 ["NoUse"] = "You are not permitted to use that command.",
                 ["NoJobs"] = "No jobs have been created.",
                 ["NoPositions"] = "You currently have no positions.",
+                ["PersonNotFound"] = "Person not found",
                 ["Separator"] = "-----------------------------",
 
                 ["PosInfo0"] = "A position consists of a filled flag, position ID, job title, which job title they report to, which "
@@ -107,6 +108,9 @@ namespace Oxide.Plugins
 
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
                 ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
+
+                ["PosHireCurrentlyFilled"] = "This position is currently filled. The current employee must be fired before someone can be hired.",
+                ["PosHireSuccess"] = "{0} has been successfully hired for the position with id #{1}.",
 
                 ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
@@ -230,6 +234,37 @@ namespace Oxide.Plugins
         		    return;
 
         		case "hire":
+        		    if (args.Length < 3)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Position hirePos = FindPositionWithID(args[1]);
+
+        		    if (hirePos == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    IPlayer newHire = FindPlayer(args[2]);
+
+        		    if (newHire == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id, args[2]));
+                        return;
+        		    }
+
+        		    if (hirePos.Filled)
+        		    {
+        		    	iPlayer.Reply(Lang("PosHireCurrentlyFilled", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    hirePos.Hire(newHire.Id);
+
+        		    iPlayer.Reply(Lang("PosHireSuccess", iPlayer.Id, newHire.displayName, hirePos.ID));
 
         		    return;
 
@@ -237,7 +272,7 @@ namespace Oxide.Plugins
 
         		    return;
 
-        		case "payrate":
+        		case "edit":
 
         		    return;
         	}
@@ -623,6 +658,18 @@ namespace Oxide.Plugins
         	}
 
         	public Dictionary<string, object> ToDictionary() => JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(this));
+
+        	private Hire(string id)
+        	{
+        		Filled = true;
+        		OwnerID = id;
+        	}
+
+        	private Fire(string id)
+        	{
+        		Filled = false;
+        		OwnerID = id;
+        	}
         }
 
         private enum JobEditField
