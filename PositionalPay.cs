@@ -112,6 +112,9 @@ namespace Oxide.Plugins
                 ["PosHireCurrentlyFilled"] = "This position is currently filled. The current employee must be fired before someone can be hired.",
                 ["PosHireSuccess"] = "{0} has been successfully hired for the position with id #{1}.",
 
+                ["PosFireCurrentlyUnfilled"] = "This position is currently unfilled.",
+                ["PosFireSuccess"] = "{0} has been successfully fire from the position with id #{1}",
+
                 ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
@@ -269,6 +272,37 @@ namespace Oxide.Plugins
         		    return;
 
         		case "fire":
+        		    if (args.Length < 3)
+        		    {
+        		    	iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    Position firePos = FindPositionWithID(args[1]);
+
+        		    if (firePos == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+        		    }
+
+        		    IPlayer newFire = FindPlayer(args[2]);
+
+        		    if (newFire == null)
+        		    {
+        		    	iPlayer.Reply(Lang("PersonNotFound", iPlayer.Id, args[2]));
+                        return;
+        		    }
+
+        		    if (!firePos.Filled)
+        		    {
+        		    	iPlayer.Reply(Lang("PosFireCurrentlyUnfilled", iPlayer.Id, command));
+                        return;
+        		    }
+
+        		    firePos.Fire(iPlayer.Id);
+
+        		    iPlayer.Reply(Lang("PosFireSuccess", iPlayer.Id, newFire.displayName, firePos.ID));
 
         		    return;
 
