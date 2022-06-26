@@ -29,6 +29,9 @@ namespace Oxide.Plugins
         [PluginReference]
         private Plugin Banking;
 
+        [PluginReference]
+        private Plugin Economics;
+
         private StoredData storedData;
         private Configuration config;
 
@@ -121,7 +124,7 @@ namespace Oxide.Plugins
                 ["PosQuitFail"] = "You don't work that position.",
                 ["PosQuitSuccess"] = "You have successfully quit position #{0} and forfeited any unclaimed paychecks.",
 
-                ["JobInfo0"] = "A job title consists of a name, job title ID, description, daily (OOC hourly) payrate, and an ability group.",
+                ["JobInfo0"] = "A job title consists of a name, description, hourly payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
                              + "described by Description, paid Payrate# hourly, and abilities from AbilityGroup.",
@@ -190,7 +193,7 @@ namespace Oxide.Plugins
         		    {
         		    	if (p.Filled)
         		    	{
-        		    		posList += pos.Title.Name + ", ID #" + pos.ID + "\n";
+        		    		posList += p.Title.Name + ", ID #" + p.ID + "\n";
         		    	}
         		    }
 
@@ -234,7 +237,7 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    clockinPos.ClockIn();
+        		    clockoutPos.ClockOut();
 
         		    iPlayer.Reply(Lang("ClockOutSuccess", iPlayer.Id, clockoutPos.ID));
 
@@ -259,7 +262,7 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    IPlayer newQuit = FindPlayer(iPlayer.displayName);
+        		    IPlayer newQuit = FindPlayer(iPlayer.Id);
 
         		    if (newQuit == null)
         		    {
@@ -360,7 +363,7 @@ namespace Oxide.Plugins
 
         		    hirePos.Hire(newHire.Id);
 
-        		    iPlayer.Reply(Lang("PosHireSuccess", iPlayer.Id, newHire.displayName, hirePos.ID));
+        		    iPlayer.Reply(Lang("PosHireSuccess", iPlayer.Id, (newHire.Object as BasePlayer).displayName, hirePos.ID));
 
         		    return;
 
@@ -395,7 +398,7 @@ namespace Oxide.Plugins
 
         		    firePos.Fire(iPlayer.Id);
 
-        		    iPlayer.Reply(Lang("PosFireSuccess", iPlayer.Id, newFire.displayName, firePos.ID));
+        		    iPlayer.Reply(Lang("PosFireSuccess", iPlayer.Id, (newFire.Object as BasePlayer).displayName, firePos.ID));
 
         		    return;
 
@@ -437,9 +440,10 @@ namespace Oxide.Plugins
         		case "list":
                     List<Job> allJobs = new List<Job>();
 
-                    for(int i = 0; i < Job.CurrentID; job++)
+                    
+                    for(int i = 0; i < Job.CurrentID; i++)
                     {
-                        Job currentJob = FindJobWithID(i);
+                        Job currentJob = FindJobWithID(i.ToString());
                         if(currentJob != null)
                         {
                             allJobs.Add(currentJob);
@@ -456,7 +460,7 @@ namespace Oxide.Plugins
                     string jobsOutput = "";
                     foreach (var job in allJobs)
                     {
-                        jobsOutput += job.Title + " (ID # " + job.ID + ")\n";
+                        jobsOutput += job.Name + " (ID # " + job.ID + ")\n";
                     }
 
                     iPlayer.Reply(jobsOutput);
@@ -470,11 +474,11 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    Job newJob = Job(args[1], args[2], args[3], args[4]);
+                    Job newJob = new Job(args[1], args[2], Convert.ToDouble(args[3]), args[4]);
 
-                    storedData.Jobs.Add(newJob.ID, new List<Job>() { newJob });
+                    storedData.Jobs.Add(newJob.ID.ToString(), new List<Job>() { newJob });
 
-                    iPlayer.Reply(Lang("JobCreateSuccess", iPlayer.Id, newJob.Title, newJob.ID));
+                    iPlayer.Reply(Lang("JobCreateSuccess", iPlayer.Id, newJob.Name, newJob.ID));
 
         		    return;
 
@@ -493,8 +497,8 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    iPlayer.Reply(Lang("JobDeleteSuccess", iPlayer.Id, deleteJob.Title, deleteJob.ID));
-                    storedData.Remove(deleteJob.ID);
+                    iPlayer.Reply(Lang("JobDeleteSuccess", iPlayer.Id, deleteJob.Name, deleteJob.ID));
+                    storedData.Jobs.Remove(args[1]);
 
         		    return;
 
@@ -514,7 +518,7 @@ namespace Oxide.Plugins
                     }
 
                     JobEditField jobField;
-                    if(!AccountEditField.TryParse(args[2].ToUpper(), out jobField)
+                    if(!JobEditField.TryParse(args[2].ToUpper(), out jobField))
                     {
                         iPlayer.Reply(Lang("JobInfo4", iPlayer.Id, command));
                         return;
@@ -788,33 +792,33 @@ namespace Oxide.Plugins
 
         	public Dictionary<string, object> ToDictionary() => JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(this));
 
-        	private Hire(string id)
+        	public void Hire(string id)
         	{
         		Filled = true;
         		OwnerID = id;
         	}
 
-        	private Fire(string id)
+        	public void Fire(string id)
         	{
         		Filled = false;
         		OwnerID = id;
         		Paycheck = 0f;
         	}
 
-        	private Quit()
+        	public void Quit()
         	{
         		Filled = false;
         		OwnerID = CreatorID;
         		Paycheck = 0f;
         	}
 
-        	private ClockIn()
+        	public void ClockIn()
         	{
         		ClockedIn = true;
         		//ClockInTime = 
         	}
 
-        	private ClockOut()
+        	public void ClockOut()
         	{
         		ClockedIn = false;
         		//ClockOutTime = 
