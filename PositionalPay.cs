@@ -244,6 +244,20 @@ namespace Oxide.Plugins
         		    return;
 
         		case "getpaycheck":
+                    var payPositions = FindPositionsWithOwnerID(iPlayer.Id);
+
+                    if (payPositions.IsEmpty())
+                    {
+                        iPlayer.Reply(Lang("NoPositions", iPlayer.Id, command));
+                        return;
+                    }
+
+                    foreach (Position p in payPositions)
+                    {
+                        iPlayer.Reply(Lang("PaycheckSuccess", iPlayer.Id, p.Paycheck, p.ID));
+                        Economics.Call<bool>("Deposit", iPlayer.Id, p.Paycheck);
+                        p.Paycheck = 0f;
+                    }
 
         		    return;
 
