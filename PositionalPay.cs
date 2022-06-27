@@ -112,6 +112,8 @@ namespace Oxide.Plugins
                 ["ClockInSuccess"] = "You successfully <color=#66FF00>CLOCKED-IN</color> to position #{0}",
                 ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /paycheck to get paid.",
 
+                ["PaycheckSuccess"] = "{0} coin has been placed in your pocket from your paycheck for position with id #{1}.",
+
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
                 ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
 
@@ -244,8 +246,22 @@ namespace Oxide.Plugins
         		    return;
 
         		case "getpaycheck":
+                    var payPositions = FindPositionsWithOwnerID(iPlayer.Id);
 
-        		    return;
+                    if (payPositions.IsEmpty())
+                    {
+                        iPlayer.Reply(Lang("NoPositions", iPlayer.Id, command));
+                        return;
+                    }
+
+                    foreach (Position p in payPositions)
+                    {
+                        iPlayer.Reply(Lang("PaycheckSuccess", iPlayer.Id, p.Paycheck, p.ID));
+                        Economics.Call<bool>("Deposit", iPlayer.Id, p.Paycheck);
+                        p.Paycheck = 0f;
+                    }
+
+                    return;
 
         		case "quit":
         		    if (args.Length < 2)
