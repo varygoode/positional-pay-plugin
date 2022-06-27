@@ -91,10 +91,10 @@ namespace Oxide.Plugins
                 ["PersonNotFound"] = "Person not found",
                 ["Separator"] = "-----------------------------",
 
-                ["PosInfo0"] = "A position consists of a filled flag, position ID, job title, which job title they report to, which "
+                ["PosInfo0"] = "A position consists of a position ID, job title, which job title they report to, which "
                              + "job titles report to them, current clock-in/clock-out times, and current accumulated paycheck.",
                 ["PosInfo1"] = "Use '/position list' to view your positions.",
-                ["PosInfo2"] = "Use '/position create Title' to create a new position.\nUse '/position delete PosID#' to delete position with ID number PosID#.",
+                ["PosInfo2"] = "Use '/position create JobID#' to create a new position using job with id JobID#.\nUse '/position delete PosID#' to delete position with ID number PosID#.",
                 ["PosInfo3"] = "Use '/position clockin PosID#' to Clock-In for your position with ID number PosID#.\n"
                              + "Use '/position clockout PosID#' to Clock-Out from your position with ID number PosID#.",
                 ["PosInfo4"] = "Use '/position getpaycheck' to receive pay in coin that has accumulated in your paycheck for all of your positions.",
@@ -102,7 +102,7 @@ namespace Oxide.Plugins
                 ["PosInfo6"] = "Use '/position hire PosID# Name' to hire Name for the position with ID number PosID#.\n"
                              + "Use '/position fire PosID# Name' to fire Name from the position with ID number PosID#.",
                 ["PosInfo7"] = "Use '/position edit PosID# FieldName NewValue' to edit the field FieldName of the position with ID PosID# to NewValue.\n"
-                             + "Field Names: JOBTITLE, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE",
+                             + "Field Names: JOBID, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE",
                 ["PosNotFound"] = "Cannot find a position with id #{0}",
 
                 ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>",
@@ -110,9 +110,7 @@ namespace Oxide.Plugins
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
 
                 ["ClockInSuccess"] = "You successfully <color=#66FF00>CLOCKED-IN</color> to position #{0}",
-                ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /paycheck to get paid.",
-
-                ["PaycheckSuccess"] = "{0} coin has been placed in your pocket from your paycheck for position with id #{1}.",
+                ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /pos getpaycheck to get paid.",
 
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
                 ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
@@ -246,22 +244,8 @@ namespace Oxide.Plugins
         		    return;
 
         		case "getpaycheck":
-                    var payPositions = FindPositionsWithOwnerID(iPlayer.Id);
 
-                    if (payPositions.IsEmpty())
-                    {
-                        iPlayer.Reply(Lang("NoPositions", iPlayer.Id, command));
-                        return;
-                    }
-
-                    foreach (Position p in payPositions)
-                    {
-                        iPlayer.Reply(Lang("PaycheckSuccess", iPlayer.Id, p.Paycheck, p.ID));
-                        Economics.Call<bool>("Deposit", iPlayer.Id, p.Paycheck);
-                        p.Paycheck = 0f;
-                    }
-
-                    return;
+        		    return;
 
         		case "quit":
         		    if (args.Length < 2)
@@ -659,6 +643,25 @@ namespace Oxide.Plugins
             return positions;
         }
 
+        private List<Position> FindPositionsWithCreatorID(string id)
+        {
+            var query = from outer in storedData.Positions
+                        from inner in outer.Value
+                        where inner.CreatorID.ToString() == id
+                        select inner;
+
+            List<Position> positions = new List<Position>();
+
+            if (!query.Any()) return positions;
+
+            foreach(var q in query)
+            {
+                positions.Add(q);
+            }
+            
+            return positions;
+        }
+
         private float GenericDistance(GenericPosition a, GenericPosition b)
         {
             float x = a.X - b.X;
@@ -779,15 +782,15 @@ namespace Oxide.Plugins
         	public Job Title { get; set; }
         	public Job ReportsTo { get; set; }
         	public List<Job> Reports { get; set; }
-        	public float ClockInTime { get; set; }
-        	public float ClockOutTime { get; set; }
-        	public float Paycheck { get; set; }
+        	public DateTime ClockInTime { get; set; }
+        	public DateTime ClockOutTime { get; set; }
+        	public double Paycheck { get; set; }
         	public bool ClockedIn { get; set; }
         	public string OwnerID { get; set; }
         	public string CreatorID { get; set; }
 
         	[JsonConstructor]
-        	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, float clockInTime, float clockOutTime, float paycheck, string ownerID)
+        	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, DateTime clockInTime, DateTime clockOutTime, float paycheck, string ownerID)
         	{
         		Filled = filled;
                 ID = id;
@@ -802,7 +805,7 @@ namespace Oxide.Plugins
         		CreatorID = ownerID;
         	}
 
-        	public Position(Job title, string ownerID) : this(false, ++CurrentID, title, null, new List<Job>(), 0f, 0f, 0f, ownerID)
+        	public Position(Job title, string ownerID) : this(false, ++CurrentID, title, null, new List<Job>(), DateTime.MinValue, DateTime.MinValue, 0f, ownerID)
         	{
         	}
 
@@ -831,14 +834,18 @@ namespace Oxide.Plugins
         	public void ClockIn()
         	{
         		ClockedIn = true;
-        		//ClockInTime = 
+        		ClockInTime = DateTime.Now;
         	}
 
         	public void ClockOut()
         	{
         		ClockedIn = false;
-        		//ClockOutTime = 
-        		//Set paycheck to Title.payrate * delta clockin-clockout
+        		ClockOutTime = DateTime.Now;
+        		if (ClockInTime != DateTime.MinValue)
+                {
+                    Paycheck += Math.Ceiling(ClockOutTime.Subtract(ClockInTime).Hours * Title.PayRate);
+                    ClockInTime = DateTime.MinValue;
+                }
         	}
         }
 
@@ -848,6 +855,14 @@ namespace Oxide.Plugins
             DESCRIPTION,
             PAYRATE,
             GROUP
+        }
+
+        private enum PosEditField
+        {
+            JOBID,
+            REPORT_TO,
+            REPORTS_ADD,
+            REPORTS_REMOVE
         }
 
         private void SaveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, storedData);
