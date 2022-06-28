@@ -103,11 +103,19 @@ namespace Oxide.Plugins
                              + "Use '/position fire PosID# Name' to fire Name from the position with ID number PosID#.",
                 ["PosInfo7"] = "Use '/position edit PosID# FieldName NewValue' to edit the field FieldName of the position with ID PosID# to NewValue.\n"
                              + "Field Names: JOBID, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE",
+                ["PosInfo8"] = "Use '/position details PosID#' to view details about the position with ID number PosID#.",
                 ["PosNotFound"] = "Cannot find a position with id #{0}",
 
                 ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>",
                 ["ClockedIN"] = "<color=#66FF00>CLOCKED-IN</color>",
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
+
+                ["PosDetails"] = "ID: {0}\n" +
+                                 "Title: {1}" +
+                                 "Reports To: {2}" +
+                                 "Reports: {3}" +
+                                 "Clocked In: {4}" +
+                                 "Current Paycheck: {5}",
 
                 ["ClockInSuccess"] = "You successfully <color=#66FF00>CLOCKED-IN</color> to position #{0}",
                 ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /pos getpaycheck to get paid.",
@@ -129,13 +137,21 @@ namespace Oxide.Plugins
                 ["PosEditFailure"] = "Position #{0} edit failure",
                 ["PosEditSuccess"] = "Position #{0} edit success",
 
-                ["JobInfo0"] = "A job title consists of a name, description, hourly payrate, and an ability group.",
+                ["JobInfo0"] = "A job title consists of a job ID, name, description, hourly payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
                              + "described by Description, paid Payrate# hourly, with abilities from AbilityGroup.",
                 ["JobInfo3"] = "Use '/job delete JobID#' to permanently remove the job with ID number JobID#.",
                 ["JobInfo4"] = "Use '/job edit JobID# FieldName NewValue' to edit the field FieldName of the job with ID number PosID# to NewValue.\n"
                              + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP",
+                ["JobInfo5"] = "Use '/job details JobID#' to view details about the position with ID number JobID#.",
+
+                ["JobDetails"] = "ID: {0}\n" +
+                                 "Name: {1}" +
+                                 "Description: {2}" +
+                                 "Payrate: {3}" +
+                                 "Ability Group: {4}",
+
                 ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
                 ["JobNotFound"] = "Cannot find a job with id #{0}",
                 ["JobDeleteSuccess"] = "You have successfully deleted the {0} job with id #{1}",
@@ -205,6 +221,25 @@ namespace Oxide.Plugins
         		    iPlayer.Reply(posList);
 
         		    return;
+
+                case "details":
+                    if (args.Length < 2)
+                    {
+                        iPlayer.Reply(Lang("PosInfo8", iPlayer.Id, command));
+                        return;
+                    }
+
+                    Position viewPos = FindPositionWithID(args[1]);
+
+                    if (viewPos == null)
+                    {
+                        iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
+                        return;
+                    }
+
+                    iPlayer.Reply(Lang("PosDetails", iPlayer.Id, viewPos.ID, viewPos.Title.Name, viewPos.ReportsTo.Name, String.Join(", ", viewPos.Reports.Select(x=>x.Name).ToArray()), viewPos.ClockedIn, viewPos.Paycheck));
+
+                    return;
 
         		case "clockin":
         		    if (args.Length < 2)
@@ -513,6 +548,25 @@ namespace Oxide.Plugins
                     iPlayer.Reply(jobsOutput);
 
         		    return;
+
+                case "details":
+                    if (args.Length < 2)
+                    {
+                        iPlayer.Reply(Lang("PosInfo8", iPlayer.Id, command));
+                        return;
+                    }
+
+                    Job viewJob = FindJobWithID(args[1]);
+
+                    if (viewJob == null)
+                    {
+                        iPlayer.Reply(Lang("JobNotFound", iPlayer.Id, args[1]));
+                        return;
+                    }
+
+                    iPlayer.Reply(Lang("JobDetails", iPlayer.Id, viewJob.ID, viewJob.Name, viewJob.Description, viewJob.PayRate, viewJob.AbilityGroup));
+
+                    return;
 
         		case "create":
                     if(args.Length < 5)
