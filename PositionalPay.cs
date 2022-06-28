@@ -111,14 +111,16 @@ namespace Oxide.Plugins
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
 
                 ["PosDetails"] = "ID: {0}\n" +
-                                 "Title: {1}" +
-                                 "Reports To: {2}" +
-                                 "Reports: {3}" +
-                                 "Clocked In: {4}" +
+                                 "Title: {1}\n" +
+                                 "Reports To: {2}\n" +
+                                 "Reports: {3}\n" +
+                                 "Clocked In: {4}\n" +
                                  "Current Paycheck: {5}",
 
                 ["ClockInSuccess"] = "You successfully <color=#66FF00>CLOCKED-IN</color> to position #{0}",
                 ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /pos getpaycheck to get paid.",
+                ["NotClockedIn"] = "You haven't <color=#66FF00>CLOCKED-IN</color> to position #{0}",
+                ["AlreadyClockedIn"] = "You're already <color=#66FF00>CLOCKED-IN</color> to position #{0}. Did you intend to <color=#FF0000>CLOCK OUT</color>?",
 
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
                 ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
@@ -147,9 +149,9 @@ namespace Oxide.Plugins
                 ["JobInfo5"] = "Use '/job details JobID#' to view details about the position with ID number JobID#.",
 
                 ["JobDetails"] = "ID: {0}\n" +
-                                 "Name: {1}" +
-                                 "Description: {2}" +
-                                 "Payrate: {3}" +
+                                 "Name: {1}\n" +
+                                 "Description: {2}\n" +
+                                 "Payrate: {3}\n" +
                                  "Ability Group: {4}",
 
                 ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
@@ -237,7 +239,9 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    iPlayer.Reply(Lang("PosDetails", iPlayer.Id, viewPos.ID, viewPos.Title.Name, viewPos.ReportsTo.Name, String.Join(", ", viewPos.Reports.Select(x=>x.Name).ToArray()), viewPos.ClockedIn, viewPos.Paycheck));
+                    string reportsTo = (viewPos.ReportsTo == null) ? "None" : viewPos.ReportsTo.Name;
+                    string reports = (viewPos.Reports.IsEmpty()) ? "None" : String.Join(", ", viewPos.Reports.Select(x=>x.Name).ToArray());
+                    iPlayer.Reply(Lang("PosDetails", iPlayer.Id, viewPos.ID, viewPos.Title.Name, reportsTo, reports, viewPos.ClockedIn, viewPos.Paycheck));
 
                     return;
 
@@ -256,7 +260,13 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    clockinPos.ClockIn();
+        		    if (!clockinPos.ClockIn())
+                    {
+                        iPlayer.Reply(Lang("AlreadyClockedIn", iPlayer.Id, args[1]));
+                        return;
+                    }
+
+                    iPlayer.Reply("Clocked in at: " + clockinPos.ClockInTime.ToString());
 
         		    iPlayer.Reply(Lang("ClockInSuccess", iPlayer.Id, clockinPos.ID));
 
@@ -277,7 +287,13 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    clockoutPos.ClockOut();
+        		    if (!clockoutPos.ClockOut())
+                    {
+                        iPlayer.Reply(Lang("NotClockedIn", iPlayer.Id, args[1]));
+                        return;
+                    }
+
+                    iPlayer.Reply("Clocked out at: " + clockoutPos.ClockOutTime.ToString());
 
         		    iPlayer.Reply(Lang("ClockOutSuccess", iPlayer.Id, clockoutPos.ID));
 
@@ -959,21 +975,25 @@ namespace Oxide.Plugins
         		Paycheck = 0f;
         	}
 
-        	public void ClockIn()
+        	public bool ClockIn()
         	{
-        		ClockedIn = true;
+        		if(ClockedIn) return false;
+                ClockedIn = true;
         		ClockInTime = DateTime.Now;
+                return true;
         	}
 
-        	public void ClockOut()
+        	public bool ClockOut()
         	{
-        		ClockedIn = false;
+        		if (!ClockedIn) return false;
+                ClockedIn = false;
         		ClockOutTime = DateTime.Now;
         		if (ClockInTime != DateTime.MinValue)
                 {
-                    Paycheck += Math.Ceiling(ClockOutTime.Subtract(ClockInTime).Hours * Title.PayRate);
+                    Paycheck += Math.Ceiling((double)ClockOutTime.Subtract(ClockInTime).TotalMinutes/60 * Title.PayRate);
                     ClockInTime = DateTime.MinValue;
                 }
+                return true;
         	}
         }
 
