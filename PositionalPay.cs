@@ -124,10 +124,15 @@ namespace Oxide.Plugins
                 ["PosQuitFail"] = "You don't work that position.",
                 ["PosQuitSuccess"] = "You have successfully quit position #{0} and forfeited any unclaimed paychecks.",
 
+                ["PaycheckSuccess"] = "{0} coin has been placed in your pocket from your paycheck for position with id #{1}.",
+
+                ["PosEditFailure"] = "Position #{0} edit failure",
+                ["PosEditSuccess"] = "Position #{0} edit success",
+
                 ["JobInfo0"] = "A job title consists of a name, description, hourly payrate, and an ability group.",
                 ["JobInfo1"] = "Use '/job list' to view jobs.",
                 ["JobInfo2"] = "Use '/job create Name \"Description\" Payrate# AbilityGroup' to create a job called Name, " 
-                             + "described by Description, paid Payrate# hourly, and abilities from AbilityGroup.",
+                             + "described by Description, paid Payrate# hourly, with abilities from AbilityGroup.",
                 ["JobInfo3"] = "Use '/job delete JobID#' to permanently remove the job with ID number JobID#.",
                 ["JobInfo4"] = "Use '/job edit JobID# FieldName NewValue' to edit the field FieldName of the job with ID number PosID# to NewValue.\n"
                              + "Field Names: NAME, DESCRIPTION, PAYRATE, GROUP",
@@ -154,7 +159,7 @@ namespace Oxide.Plugins
         	if (args.Length < 1)
         	{
         		var message = "Usage: /position info";
-                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list|clockin|clockout|getpaycheck|quit";
+                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list|details|clockin|clockout|getpaycheck|quit";
                 if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|delete|hire|fire|edit";
 
                 iPlayer.Message(message);
@@ -417,6 +422,34 @@ namespace Oxide.Plugins
         		    return;
 
         		case "edit":
+                    if(args.Length < 4)
+                    {
+                        iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
+                        return;
+                    }
+
+                    Position editPos = FindPositionWithID(args[1]);
+
+                    if (editPos == null)
+                    {
+                        iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, command));
+                        return;
+                    }
+
+                    PosEditField posField;
+                    if(!PosEditField.TryParse(args[2].ToUpper(), out posField))
+                    {
+                        iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
+                        return;
+                    }
+
+                    if(!EditPos(editPos, posField, args[3]))
+                    {
+                        iPlayer.Reply(Lang("PosEditFailure", iPlayer.Id, command, editPos.ID));
+                        return;
+                    }
+
+                    iPlayer.Reply(Lang("PosEditSuccess", iPlayer.Id, args[1]));
 
         		    return;
         	}
@@ -433,7 +466,7 @@ namespace Oxide.Plugins
         	if (args.Length < 1)
         	{
         		var message = "Usage: /job info";
-                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list";
+                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list|details";
                 if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|delete|edit";
 
                 iPlayer.Message(message);
@@ -576,6 +609,33 @@ namespace Oxide.Plugins
 
                 case JobEditField.GROUP:
                     job.AbilityGroup = value;
+                    return true;
+            }
+            return false;
+        }
+
+        private bool EditPos(Position pos, PosEditField field, string value)
+        {
+            Job job = FindJobWithID(value);
+            if(job == null) return false;
+            switch(field)
+            {
+                case PosEditField.JOBID:
+                    pos.Title = job;
+                    return true;
+
+                case PosEditField.REPORT_TO:
+                    pos.ReportsTo = job;
+                    return true;
+
+                case PosEditField.REPORTS_ADD:
+                    if(pos.Reports.Contains(job)) return false;
+                    pos.Reports.Add(job);
+                    return true;
+
+                case PosEditField.REPORTS_REMOVE:
+                    if(!pos.Reports.Contains(job)) return false;
+                    pos.Reports.Remove(job);
                     return true;
             }
             return false;
