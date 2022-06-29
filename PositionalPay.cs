@@ -75,6 +75,16 @@ namespace Oxide.Plugins
 
         private void Unload() => SaveData();
 
+        void OnPlayerDisconnected(BasePlayer player, string reason)
+        {
+            IPlayer iPlayer = player.IPlayer;
+
+            foreach (Position p in FindPositionsWithOwnerID(iPlayer.Id))
+            {
+                p.ClockOut();
+            }
+        }
+
         #endregion Hooks
 
         #region Localization
@@ -127,9 +137,10 @@ namespace Oxide.Plugins
 
                 ["PosHireCurrentlyFilled"] = "This position is currently filled. The current employee must be fired before someone can be hired.",
                 ["PosHireSuccess"] = "{0} has been successfully hired for the position with id #{1}.",
+                ["PosCannotHire"] = "You cannot hire for position #{0}.",
 
                 ["PosFireCurrentlyUnfilled"] = "This position is currently unfilled.",
-                ["PosFireSuccess"] = "{0} has been successfully fire from the position with id #{1}",
+                ["PosFireSuccess"] = "{0} has been successfully fired from the position with id #{1}",
 
                 ["PosQuitFail"] = "You don't work that position.",
                 ["PosQuitSuccess"] = "You have successfully quit position #{0} and forfeited any unclaimed paychecks.",
@@ -417,6 +428,12 @@ namespace Oxide.Plugins
                         return;
         		    }
 
+                    if (!FindPositionsWithOwnerID(iPlayer.Id).Any(p => p.Reports.Contains(hirePos.Title)) && !iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("PosCannotHire", iPlayer.Id, args[1]));
+                        return;
+                    }
+
         		    IPlayer newHire = FindPlayer(args[2]);
 
         		    if (newHire == null)
@@ -475,7 +492,7 @@ namespace Oxide.Plugins
         		case "edit":
                     if(args.Length < 4)
                     {
-                        iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
+                        iPlayer.Reply(Lang("PosInfo7", iPlayer.Id, command));
                         return;
                     }
 
@@ -537,9 +554,8 @@ namespace Oxide.Plugins
 
         		case "list":
                     List<Job> allJobs = new List<Job>();
-
                     
-                    for(int i = 0; i < Job.CurrentID; i++)
+                    for(int i = 1; i <= Job.CurrentID; i++)
                     {
                         Job currentJob = FindJobWithID(i.ToString());
                         if(currentJob != null)
