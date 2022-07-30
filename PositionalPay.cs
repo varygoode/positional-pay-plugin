@@ -69,6 +69,11 @@ namespace Oxide.Plugins
             {
             	Puts("Banking not found!");
             }
+
+            if (StateIdentification == null)
+            {
+                Puts("StateIdentification not found!");
+            }
         }
 
         private void OnServerSave() => SaveData();
@@ -81,7 +86,7 @@ namespace Oxide.Plugins
 
             foreach (Position p in FindPositionsWithOwnerID(iPlayer.Id))
             {
-                p.ClockOut();
+                if(p.ClockedIn) p.ClockOut();
             }
         }
 
@@ -99,12 +104,12 @@ namespace Oxide.Plugins
                 ["NoJobs"] = "No jobs have been created.",
                 ["NoPositions"] = "You currently have no positions.",
                 ["PersonNotFound"] = "Person not found",
-                ["Separator"] = "-----------------------------",
+                ["Separator"] = "-----------------------------\n",
 
                 ["PosInfo0"] = "A position consists of a position ID, job title, which job title they report to, which "
                              + "job titles report to them, current clock-in/clock-out times, and current accumulated paycheck.",
                 ["PosInfo1"] = "Use '/position list' to view your positions.",
-                ["PosInfo2"] = "Use '/position create JobID#' to create a new position using job with id JobID#.\nUse '/position delete PosID#' to delete position with ID number PosID#.",
+                ["PosInfo2"] = "Use '/position create JobID# PayAccount#' to create a new position using job with id JobID# which will be the payment source.\nUse '/position delete PosID#' to delete position with ID number PosID#.",
                 ["PosInfo3"] = "Use '/position clockin PosID#' to Clock-In for your position with ID number PosID#.\n"
                              + "Use '/position clockout PosID#' to Clock-Out from your position with ID number PosID#.",
                 ["PosInfo4"] = "Use '/position getpaycheck' to receive pay in coin that has accumulated in your paycheck for all of your positions.",
@@ -112,28 +117,39 @@ namespace Oxide.Plugins
                 ["PosInfo6"] = "Use '/position hire PosID# Name' to hire Name for the position with ID number PosID#.\n"
                              + "Use '/position fire PosID# Name' to fire Name from the position with ID number PosID#.",
                 ["PosInfo7"] = "Use '/position edit PosID# FieldName NewValue' to edit the field FieldName of the position with ID PosID# to NewValue.\n"
-                             + "Field Names: JOBID, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE",
+                             + "Field Names: JOBID, REPORT_TO, REPORTS_ADD, REPORTS_REMOVE, PAYACCT",
                 ["PosInfo8"] = "Use '/position details PosID#' to view details about the position with ID number PosID#.",
                 ["PosNotFound"] = "Cannot find a position with id #{0}",
 
-                ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>",
+                ["PosListHeader"] = "<color=#00D8D8>YOUR POSITIONS</color>\n",
+                ["PosHireHeader"] = "<color=#00D8D8>REPORTING POSITIONS</color>\n",
                 ["ClockedIN"] = "<color=#66FF00>CLOCKED-IN</color>",
                 ["ClockedOUT"] = "<color=#FF0000>CLOCKED-OUT</color>",
+                ["FILLED"] = "<color=#66FF00>FILLED</color>",
+                ["UNFILLED"] = "<color=#FF0000>UNFILLED</color>",
 
                 ["PosDetails"] = "ID: {0}\n" +
                                  "Title: {1}\n" +
                                  "Reports To: {2}\n" +
                                  "Reports: {3}\n" +
-                                 "Clocked In: {4}\n" +
-                                 "Current Paycheck: {5}",
+                                 "Pay Account: #{4}\n" +
+                                 "Clocked In: {5}\n" +
+                                 "Current Paycheck: {6}",
+                ["PosDetailsFail"] = "You cannot view the details of position #{0}",
 
                 ["ClockInSuccess"] = "You successfully <color=#66FF00>CLOCKED-IN</color> to position #{0}",
                 ["ClockOutSuccess"] = "You successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. Your pay has been added to your paycheck. Use /pos getpaycheck to get paid.",
+                ["ClockOutTooSoon"] = "You've successfully <color=#FF0000>CLOCKED-OUT</color> of position #{0}. You didn't work at least 15 minutes, so no pay has been added to your paycheck.",
                 ["NotClockedIn"] = "You haven't <color=#66FF00>CLOCKED-IN</color> to position #{0}",
                 ["AlreadyClockedIn"] = "You're already <color=#66FF00>CLOCKED-IN</color> to position #{0}. Did you intend to <color=#FF0000>CLOCK OUT</color>?",
+                ["ClockedInElsewhere"] = "You cannot <color=#66FF00>CLOCK-IN</color> to position #{0} until you <color=#FF0000>CLOCK-OUT</color> from position #{1}!",
+
+                ["PosNotHired"] = "You're not hired for position #{0}",
 
                 ["PosCreateSuccess"] = "A new position with id #{0} was created",
                 ["PosDeleteSuccess"] = "The position with id #{0} was deleted",
+
+                ["PosNoBankAccount"] = "You do not have access to bank account #{0} or it does not exist.",
 
                 ["PosHireCurrentlyFilled"] = "This position is currently filled. The current employee must be fired before someone can be hired.",
                 ["PosHireSuccess"] = "{0} has been successfully hired for the position with id #{1}.",
@@ -141,11 +157,13 @@ namespace Oxide.Plugins
 
                 ["PosFireCurrentlyUnfilled"] = "This position is currently unfilled.",
                 ["PosFireSuccess"] = "{0} has been successfully fired from the position with id #{1}",
+                ["PosCannotFire"] = "You cannot fire for position #{0}.",
 
                 ["PosQuitFail"] = "You don't work that position.",
                 ["PosQuitSuccess"] = "You have successfully quit position #{0} and forfeited any unclaimed paychecks.",
 
-                ["PaycheckSuccess"] = "{0} coin has been placed in your pocket from your paycheck for position with id #{1}.",
+                ["PaycheckSuccess"] = "{0} coin has been placed in your pocket from your paycheck for position #{1}.",
+                ["PaycheckAccountFailure"] = "Unable to get paycheck for position #{0}. Payment Account #{1} is frozen or has insufficient funds. Contact your supervisor to remedy.",
 
                 ["PosEditFailure"] = "Position #{0} edit failure",
                 ["PosEditSuccess"] = "Position #{0} edit success",
@@ -166,10 +184,13 @@ namespace Oxide.Plugins
                                  "Ability Group: {4}",
 
                 ["JobCreateSuccess"] = "You have successfully created the {0} job with id #{1}",
+                ["GroupNotFound"] = "Ability group {0} not found.",
                 ["JobNotFound"] = "Cannot find a job with id #{0}",
                 ["JobDeleteSuccess"] = "You have successfully deleted the {0} job with id #{1}",
                 ["JobEditFailure"] = "Job #{0} edit failure",
-                ["JobEditSuccess"] = "You have successfully updated {0} to {1} for Job #{2}"
+                ["JobEditSuccess"] = "You have successfully updated {0} to {1} for Job #{2}",
+
+                ["Wipe_Success"] = "YOU HAVE WIPED ALL DATA. THIS CANNOT BE UNDONE."
             }, this);
         }
 
@@ -180,16 +201,17 @@ namespace Oxide.Plugins
         [Command("position", "pos")]
         private void CommandPosition(IPlayer iPlayer, string command, string[] args)
         {
-        	if (!iPlayer.HasPermission(PermAdmin) && !iPlayer.HasPermission(PermManage))
+        	if (!iPlayer.HasPermission(PermAdmin) && !iPlayer.HasPermission(PermManage) && !iPlayer.HasPermission(PermUse))
         	{
-        		return;
+        		iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                return;
         	}
 
         	if (args.Length < 1)
         	{
         		var message = "Usage: /position info";
                 if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermUse)) message += "|list|details|clockin|clockout|getpaycheck|quit";
-                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|create|delete|hire|fire|edit";
+                if (iPlayer.HasPermission(PermAdmin) || iPlayer.HasPermission(PermManage)) message += "|listall|create|delete|hire|fire|edit";
 
                 iPlayer.Message(message);
                 return;
@@ -206,11 +228,13 @@ namespace Oxide.Plugins
                     iPlayer.Reply(Lang("PosInfo5", iPlayer.Id, command));
                     iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
                     iPlayer.Reply(Lang("PosInfo7", iPlayer.Id, command));
+                    iPlayer.Reply(Lang("PosInfo8", iPlayer.Id, command));
 
         		    return;
 
         		case "list":
         		    var yourPositions = FindPositionsWithOwnerID(iPlayer.Id);
+                    List<Position> yourReports = new List<Position>();
 
         		    if (yourPositions.IsEmpty())
         		    {
@@ -218,22 +242,72 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    iPlayer.Reply(Lang("PosListHeader", iPlayer.Id, command));
-        		    iPlayer.Reply(Lang("Separator", iPlayer.Id, command));
-
         		    string posList = "";
 
         		    foreach (Position p in yourPositions)
         		    {
         		    	if (p.Filled)
         		    	{
-        		    		posList += p.Title.Name + ", ID #" + p.ID + "\n";
+        		    		var posClockedIn = (p.ClockedIn) ? Lang("ClockedIN", iPlayer.Id, command) : Lang("ClockedOUT", iPlayer.Id, command);
+                            posList += p.Title.Name + ", ID #" + p.ID + " (" + posClockedIn + ")\n";
+
+                            foreach (Job j in p.Reports)
+                            {
+                                yourReports = yourReports.Union(FindPositionsWithTitle(j)).ToList();
+                            }
         		    	}
         		    }
 
-        		    iPlayer.Reply(posList);
+        		    posList = posList == "" ? posList + "None" : posList;
+                    iPlayer.Reply(Lang("PosListHeader", iPlayer.Id, command) + Lang("Separator", iPlayer.Id, command) + posList);
+
+                    string reportsList = "";
+
+                    foreach (Position p in yourReports)
+                    {
+                        var posFilled = (p.Filled) ? Lang("FILLED", iPlayer.Id, command) : Lang("UNFILLED", iPlayer.Id, command);
+                        reportsList += p.Title.Name + ", ID #" + p.ID + " (" + posFilled + ")\n";
+                    }
+
+                    reportsList = reportsList == "" ? reportsList + "None" : reportsList;
+                    iPlayer.Reply(Lang("PosHireHeader", iPlayer.Id, command) + Lang("Separator", iPlayer.Id, command) + reportsList);
 
         		    return;
+
+                case "listall":
+                    if (!iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                        return;
+                    }
+
+                    List<Position> allPositions = new List<Position>();
+                    
+                    for(int i = 1; i <= Position.CurrentID; i++)
+                    {
+                        Position currentPos = FindPositionWithID(i.ToString());
+                        if(currentPos != null)
+                        {
+                            allPositions.Add(currentPos);
+                        }
+                        
+                    }
+
+                    if(allPositions.IsEmpty())
+                    {
+                        iPlayer.Reply(Lang("NoPositions", iPlayer.Id, command));
+                        return;
+                    }
+
+                    string positionsOutput = "";
+                    foreach (var p in allPositions)
+                    {
+                        positionsOutput += p.Title.Name + " (ID # " + p.ID + ")\n";
+                    }
+
+                    iPlayer.Reply(positionsOutput);
+
+                    return;
 
                 case "details":
                     if (args.Length < 2)
@@ -250,9 +324,37 @@ namespace Oxide.Plugins
                         return;
                     }
 
+                    bool canViewDetails = false;
+
+                    foreach (Position p in FindPositionsWithOwnerID(iPlayer.Id))
+                    {
+                        if (p.Filled)
+                        {
+                            if (viewPos.ID == p.ID)
+                            {
+                                canViewDetails = true;
+                                break;
+                            }
+                            foreach (Job j in p.Reports)
+                            {
+                                if (j.ID == viewPos.Title.ID)
+                                {
+                                    canViewDetails = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!canViewDetails && !iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("PosDetailsFail", iPlayer.Id, viewPos.ID));
+                        return;
+                    }
+
                     string reportsTo = (viewPos.ReportsTo == null) ? "None" : viewPos.ReportsTo.Name;
                     string reports = (viewPos.Reports.IsEmpty()) ? "None" : String.Join(", ", viewPos.Reports.Select(x=>x.Name).ToArray());
-                    iPlayer.Reply(Lang("PosDetails", iPlayer.Id, viewPos.ID, viewPos.Title.Name, reportsTo, reports, viewPos.ClockedIn, viewPos.Paycheck));
+                    iPlayer.Reply(Lang("PosDetails", iPlayer.Id, viewPos.ID, viewPos.Title.Name, reportsTo, reports, viewPos.PayAccountNum, viewPos.ClockedIn, viewPos.Paycheck));
 
                     return;
 
@@ -265,17 +367,35 @@ namespace Oxide.Plugins
 
         		    Position clockinPos = FindPositionWithID(args[1]);
 
+                    if (clockinPos.OwnerID != iPlayer.Id || !clockinPos.Filled)
+                    {
+                        iPlayer.Reply(Lang("PosNotHired", iPlayer.Id, clockinPos.ID));
+                        return;
+                    }
+
         		    if (clockinPos == null)
         		    {
         		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
                         return;
         		    }
 
-        		    if (!clockinPos.ClockIn())
+        		    if (clockinPos.ClockedIn)
                     {
                         iPlayer.Reply(Lang("AlreadyClockedIn", iPlayer.Id, args[1]));
                         return;
                     }
+
+                    Position alreadyClockedIn = FindPositionsWithOwnerID(iPlayer.Id).Find(p => p.ClockedIn == true);
+
+                    if (alreadyClockedIn != null)
+                    {
+                        iPlayer.Reply(Lang("ClockedInElsewhere", iPlayer.Id, args[1], alreadyClockedIn.ID));
+                        return;
+                    }
+
+                    clockinPos.ClockIn();
+
+                    iPlayer.AddToGroup(clockinPos.Title.AbilityGroup);
 
                     iPlayer.Reply("Clocked in at: " + clockinPos.ClockInTime.ToString());
 
@@ -292,21 +412,40 @@ namespace Oxide.Plugins
 
         		    Position clockoutPos = FindPositionWithID(args[1]);
 
+                    if (clockoutPos.OwnerID != iPlayer.Id || !clockoutPos.Filled)
+                    {
+                        iPlayer.Reply(Lang("PosNotHired", iPlayer.Id, clockoutPos.ID));
+                        return;
+                    }
+
         		    if (clockoutPos == null)
         		    {
         		    	iPlayer.Reply(Lang("PosNotFound", iPlayer.Id, args[1]));
                         return;
         		    }
 
-        		    if (!clockoutPos.ClockOut())
+        		    if (!clockoutPos.ClockedIn)
                     {
                         iPlayer.Reply(Lang("NotClockedIn", iPlayer.Id, args[1]));
                         return;
                     }
 
+                    bool tooSoon = Math.Ceiling((double)DateTime.Now.Subtract(clockoutPos.ClockInTime).TotalMinutes) < 15;
+
+                    clockoutPos.ClockOut();
+
+                    iPlayer.RemoveFromGroup(clockoutPos.Title.AbilityGroup);
+
                     iPlayer.Reply("Clocked out at: " + clockoutPos.ClockOutTime.ToString());
 
-        		    iPlayer.Reply(Lang("ClockOutSuccess", iPlayer.Id, clockoutPos.ID));
+        		    if(!tooSoon)
+                    {
+                        iPlayer.Reply(Lang("ClockOutSuccess", iPlayer.Id, clockoutPos.ID));
+                    }
+                    else
+                    {
+                        iPlayer.Reply(Lang("ClockOutTooSoon", iPlayer.Id, clockoutPos.ID));
+                    }
 
         		    return;
 
@@ -320,10 +459,17 @@ namespace Oxide.Plugins
                     }
 
                     foreach (Position p in payPositions)
-                    {
-                        iPlayer.Reply(Lang("PaycheckSuccess", iPlayer.Id, p.Paycheck, p.ID));
-                        Economics.Call<bool>("Deposit", iPlayer.Id, p.Paycheck);
-                        p.Paycheck = 0f;
+                    {                        
+                        if(Banking.Call<bool>("Withdraw", p.PayAccountNum, p.Paycheck, "PAY FOR POSITION " + p.ID + " TO " + (iPlayer.Object as BasePlayer).displayName))
+                        {
+                            iPlayer.Reply(Lang("PaycheckSuccess", iPlayer.Id, p.Paycheck, p.ID));
+                            Economics.Call<bool>("Deposit", iPlayer.Id, p.Paycheck);
+                            p.Paycheck = 0f;
+                        }
+                        else
+                        {
+                            iPlayer.Reply(Lang("PaycheckAccountFailure", iPlayer.Id, p.ID, p.PayAccountNum));
+                        }
                     }
 
         		    return;
@@ -364,7 +510,13 @@ namespace Oxide.Plugins
         		    return;
 
         		case "create":
-        		    if (args.Length < 2)
+                    if (!iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                        return;
+                    }
+
+        		    if (args.Length < 3)
         		    {
         		    	iPlayer.Reply(Lang("PosInfo2", iPlayer.Id, command));
                         return;
@@ -378,7 +530,7 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-        		    Position newPos = new Position(title, iPlayer.Id);
+        		    Position newPos = new Position(title, Convert.ToDouble(args[2]), iPlayer.Id);
 
         		    if (storedData.Positions.ContainsKey(iPlayer.Id))
                     {
@@ -394,11 +546,23 @@ namespace Oxide.Plugins
         		    return;
 
         		case "delete":
+                    if (!iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                        return;
+                    }
+                    
         		    if (args.Length < 2)
         		    {
         		    	iPlayer.Reply(Lang("PosInfo2", iPlayer.Id, command));
                         return;
         		    }
+
+                    if (!iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                        return;
+                    }
 
         		    Position delPos = FindPositionWithID(args[1]);
 
@@ -428,7 +592,9 @@ namespace Oxide.Plugins
                         return;
         		    }
 
-                    if (!FindPositionsWithOwnerID(iPlayer.Id).Any(p => p.Reports.Contains(hirePos.Title)) && !iPlayer.HasPermission(PermAdmin))
+                    if (!FindPositionsWithOwnerID(iPlayer.Id).Any(p => p.Reports.Contains(hirePos.Title)) &&
+                        !FindPositionsInHierarchy(hirePos).Any(p => p.OwnerID == iPlayer.Id) &&
+                        !iPlayer.HasPermission(PermAdmin))
                     {
                         iPlayer.Reply(Lang("PosCannotHire", iPlayer.Id, args[1]));
                         return;
@@ -469,6 +635,14 @@ namespace Oxide.Plugins
                         return;
         		    }
 
+                    if (!FindPositionsWithOwnerID(iPlayer.Id).Any(p => p.Reports.Contains(firePos.Title)) &&
+                        !FindPositionsInHierarchy(firePos).Any(p => p.OwnerID == iPlayer.Id) &&
+                        !iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("PosCannotFire", iPlayer.Id, args[1]));
+                        return;
+                    }
+
         		    IPlayer newFire = FindPlayer(args[2]);
 
         		    if (newFire == null)
@@ -490,6 +664,12 @@ namespace Oxide.Plugins
         		    return;
 
         		case "edit":
+                    if (!iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                        return;
+                    }
+
                     if(args.Length < 4)
                     {
                         iPlayer.Reply(Lang("PosInfo7", iPlayer.Id, command));
@@ -507,19 +687,32 @@ namespace Oxide.Plugins
                     PosEditField posField;
                     if(!PosEditField.TryParse(args[2].ToUpper(), out posField))
                     {
-                        iPlayer.Reply(Lang("PosInfo6", iPlayer.Id, command));
+                        iPlayer.Reply(Lang("PosInfo7", iPlayer.Id, command));
                         return;
                     }
 
                     if(!EditPos(editPos, posField, args[3]))
                     {
-                        iPlayer.Reply(Lang("PosEditFailure", iPlayer.Id, command, editPos.ID));
+                        iPlayer.Reply(Lang("PosEditFailure", iPlayer.Id, editPos.ID));
                         return;
                     }
 
                     iPlayer.Reply(Lang("PosEditSuccess", iPlayer.Id, args[1]));
 
         		    return;
+
+                case "wipe":
+                    if (!iPlayer.HasPermission(PermAdmin))
+                    {
+                        iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                        return;
+                    }
+
+                    storedData.Clear();
+                    SaveData();
+                    iPlayer.Reply(Lang("Wipe_Success", iPlayer.Id, command));
+
+                    return;
         	}
         }
 
@@ -528,7 +721,8 @@ namespace Oxide.Plugins
         {
         	if (!iPlayer.HasPermission(PermAdmin) && !iPlayer.HasPermission(PermManage))
         	{
-        		return;
+        		iPlayer.Reply(Lang("NoUse", iPlayer.Id, command));
+                return;
         	}
 
         	if (args.Length < 1)
@@ -549,6 +743,7 @@ namespace Oxide.Plugins
                     iPlayer.Reply(Lang("JobInfo2", iPlayer.Id, command));
                     iPlayer.Reply(Lang("JobInfo3", iPlayer.Id, command));
                     iPlayer.Reply(Lang("JobInfo4", iPlayer.Id, command));
+                    iPlayer.Reply(Lang("JobInfo5", iPlayer.Id, command));
 
         		    return;
 
@@ -607,7 +802,13 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    Job newJob = new Job(args[1], args[2], Convert.ToDouble(args[3]), args[4]);
+                    if(!permission.GroupExists(args[4].ToLower()))
+                    {
+                        iPlayer.Reply(Lang("GroupNotFound", iPlayer.Id, args[4]));
+                        return;
+                    }
+
+                    Job newJob = new Job(args[1].ToUpper(), args[2], Convert.ToDouble(args[3]), args[4]);
 
                     storedData.Jobs.Add(newJob.ID.ToString(), new List<Job>() { newJob });
 
@@ -703,25 +904,55 @@ namespace Oxide.Plugins
         private bool EditPos(Position pos, PosEditField field, string value)
         {
             Job job = FindJobWithID(value);
-            if(job == null) return false;
+            if(job == null && !(field == PosEditField.REPORT_TO && value == "0")) return false;
             switch(field)
             {
                 case PosEditField.JOBID:
                     pos.Title = job;
+                    pos.ReportsTo = null;
+                    pos.Reports.Clear();
                     return true;
 
                 case PosEditField.REPORT_TO:
+                    if(value == "0")
+                    {
+                        pos.ReportsTo = null;
+                        Puts(pos.Title.Name + " no longer reports to any job");
+                        return true;
+                    }
+                    if(pos.ReportsTo != null && pos.ReportsTo.ID == job.ID) return false;
                     pos.ReportsTo = job;
+                    Puts(pos.Title.Name + " now reports to " + job.Name);
+                    foreach (Position p in FindPositionsWithTitle(job))
+                    {
+                        EditPos(p, PosEditField.REPORTS_ADD, pos.Title.ID.ToString());
+                    }
                     return true;
 
                 case PosEditField.REPORTS_ADD:
-                    if(pos.Reports.Contains(job)) return false;
+                    if(pos.Reports.Any(x => x.ID == job.ID)) return false;
                     pos.Reports.Add(job);
+                    Puts("Added " + job.Name + " as a report to position " + pos.Title.Name);
+                    foreach (Position p in FindPositionsWithTitle(job))
+                    {
+                        EditPos(p, PosEditField.REPORT_TO, pos.Title.ID.ToString());
+                    }
                     return true;
 
                 case PosEditField.REPORTS_REMOVE:
-                    if(!pos.Reports.Contains(job)) return false;
-                    pos.Reports.Remove(job);
+                    if(!pos.Reports.Any(x => x.ID == job.ID)) return false;                    
+                    pos.Reports.Remove(pos.Reports.Find(x => x.ID == job.ID));
+                    Puts(job.Name + " no longer reports to " + pos.Title.Name);
+                    foreach (Position p in FindPositionsWithTitle(pos.Title))
+                    {
+                        if (p.ID == pos.ID) continue;
+                        p.Reports.Remove(p.Reports.Find(x => x.ID == job.ID));
+                        Puts(job.Name + " no longer reports to " + p.Title.Name);
+                    }
+                    return true;
+
+                case PosEditField.PAYACCT:
+                    pos.PayAccountNum = Convert.ToDouble(value);
                     return true;
             }
             return false;
@@ -822,6 +1053,57 @@ namespace Oxide.Plugins
             return positions;
         }
 
+        private List<Position> FindPositionsWithTitle(Job title)
+        {
+            var query = from outer in storedData.Positions
+                        from inner in outer.Value
+                        where inner.Title.ID == title.ID
+                        select inner;
+
+            List<Position> positions = new List<Position>();
+
+            if (!query.Any()) return positions;
+
+            foreach(var q in query)
+            {
+                positions.Add(q);
+            }
+            
+            return positions;
+        }
+
+        private List<Position> FindPositionsWithReporter(Job title)
+        {
+            var query = from outer in storedData.Positions
+                        from inner in outer.Value
+                        where inner.Reports.Any(x => x.ID == title.ID)
+                        select inner;
+
+            List<Position> positions = new List<Position>();
+
+            if (!query.Any()) return positions;
+
+            foreach(var q in query)
+            {
+                positions.Add(q);
+            }
+            
+            return positions;
+        }
+
+        private List<Position> FindPositionsInHierarchy(Position pos)
+        {
+            List<Position> positions = new List<Position>();
+            if(pos.ReportsTo != null)
+            {
+                Position p = FindPositionsWithTitle(pos.ReportsTo).Find(x => x.OwnerID == pos.OwnerID);
+                positions = (p == null) ? positions : positions.Union(FindPositionsInHierarchy(p)).ToList();
+                positions.Add(p);
+            }
+
+            return positions;
+        }
+
         private float GenericDistance(GenericPosition a, GenericPosition b)
         {
             float x = a.X - b.X;
@@ -892,11 +1174,13 @@ namespace Oxide.Plugins
             public void ClearJobs()
             {
             	Jobs.Clear();
+                Job.CurrentID = 0;
             }
 
             public void ClearPositions()
             {
             	Positions.Clear();
+                Position.CurrentID = 0;
             }
 
             public void Clear()
@@ -945,12 +1229,13 @@ namespace Oxide.Plugins
         	public DateTime ClockInTime { get; set; }
         	public DateTime ClockOutTime { get; set; }
         	public double Paycheck { get; set; }
+            public double PayAccountNum { get; set; }
         	public bool ClockedIn { get; set; }
         	public string OwnerID { get; set; }
         	public string CreatorID { get; set; }
 
         	[JsonConstructor]
-        	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, DateTime clockInTime, DateTime clockOutTime, float paycheck, string ownerID)
+        	public Position(bool filled, double id, Job title, Job reportsTo, List<Job> reports, DateTime clockInTime, DateTime clockOutTime, float paycheck, double payAcctNum, string ownerID)
         	{
         		Filled = filled;
                 ID = id;
@@ -960,12 +1245,13 @@ namespace Oxide.Plugins
         		ClockInTime = clockInTime;
         		ClockOutTime = clockOutTime;
         		Paycheck = paycheck;
+                PayAccountNum = payAcctNum;
         		ClockedIn = false;
         		OwnerID = ownerID;
         		CreatorID = ownerID;
         	}
 
-        	public Position(Job title, string ownerID) : this(false, ++CurrentID, title, null, new List<Job>(), DateTime.MinValue, DateTime.MinValue, 0f, ownerID)
+        	public Position(Job title, double payAcctNum, string ownerID) : this(false, ++CurrentID, title, null, new List<Job>(), DateTime.MinValue, DateTime.MinValue, 0f, payAcctNum, ownerID)
         	{
         	}
 
@@ -1006,7 +1292,10 @@ namespace Oxide.Plugins
         		ClockOutTime = DateTime.Now;
         		if (ClockInTime != DateTime.MinValue)
                 {
-                    Paycheck += Math.Ceiling((double)ClockOutTime.Subtract(ClockInTime).TotalMinutes/60 * Title.PayRate);
+                    if(Math.Ceiling((double)ClockOutTime.Subtract(ClockInTime).TotalMinutes) >= 15)
+                    {
+                        Paycheck += Math.Ceiling((double)ClockOutTime.Subtract(ClockInTime).TotalMinutes/60 * Title.PayRate);
+                    }
                     ClockInTime = DateTime.MinValue;
                 }
                 return true;
@@ -1026,7 +1315,8 @@ namespace Oxide.Plugins
             JOBID,
             REPORT_TO,
             REPORTS_ADD,
-            REPORTS_REMOVE
+            REPORTS_REMOVE,
+            PAYACCT
         }
 
         private void SaveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, storedData);
